@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Networking Tetris – Block Boundary Grid</title>
+  <style>
+    body {
+      background: #020617;
+      color: #e5e7eb;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 1.5rem;
+    }
+    .card {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #020617;
+      border-radius: 1rem;
+      border: 1px solid #1f2937;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    h1 { margin-top: 0; font-size: 1.35rem; }
+    label { font-size: 0.9rem; }
+    input[type="text"] {
+      width: 240px;
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: #e5e7eb;
+      margin-top: 0.2rem;
+    }
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 0.35rem 0.9rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, #22c55e, #0ea5e9);
+      color: #020617;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    button.secondary {
+      background: #111827;
+      color: #e5e7eb;
+      border: 1px solid #1f2937;
+    }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem; align-items: center; }
+    .info { font-size: 0.85rem; color: #9ca3af; }
+    .error { color: #fca5a5; font-size: 0.9rem; margin-left: 0.75rem; }
+
+    .palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+    .palette-item {
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      padding: 0.25rem 0.7rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      background: #020617;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .palette-item.active {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px #22c55e33;
+    }
+    .pill {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+    }
+
+    .grid-wrapper { margin-top: 1rem; }
+    .grid-label { font-size: 0.9rem; margin-bottom: 0.3rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr); /* 8 columns; rows auto */
+      gap: 2px;
+      background: #020617;
+      border: 1px solid #1f2937;
+      padding: 2px;
+      max-width: 640px;
+    }
+    .cell {
+      aspect-ratio: 1 / 1;
+      border-radius: 4px;
+      background: #020617;
+      border: 1px solid #0b1120; /* pixel borders only */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      color: #9ca3af;
+      position: relative;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .cell.filled {
+      color: #e5e7eb;
+      border-color: rgba(15,23,42,0.9);
+    }
+    .dot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+    }
+    .dot.green { background: #22c55e; top: 3px; left: 3px; }
+    .dot.red   { background: #ef4444; bottom: 3px; right: 3px; }
+
+    .legend { margin-top: 0.4rem; font-size: 0.8rem; color: #9ca3af; }
+    .legend-item { display: inline-flex; align-items: center; gap: 4px; margin-right: 1rem; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 999px; }
+
+    .table-wrapper {
+      margin-top: 0.75rem;
+      max-width: 800px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    th, td {
+      padding: 0.3rem 0.45rem;
+      border-bottom: 1px solid #1f2937;
+      text-align: left;
+      white-space: nowrap;
+    }
+    th { background: #020617; position: sticky; top: 0; }
+    tbody tr:nth-child(odd)  { background: rgba(15,23,42,0.7); }
+    tbody tr:nth-child(even) { background: rgba(15,23,42,0.4); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Networking Tetris – Block Boundary Grid</h1>
+    <p class="info">
+      Enter a base network. The app picks a pixel size (a more specific prefix) and renders the whole
+      space as “pixels.” Each subnet piece is a group of pixels that snaps to valid CIDR boundaries
+      and can’t overlap other pieces.
+    </p>
+
+    <div class="row">
+      <div>
+        <label for="base">Base network (CIDR)</label><br />
+        <input id="base" type="text" value="10.0.0.0/20" />
+        <div class="info">Try /16, /20, /24, etc.</div>
+      </div>
+      <div>
+        <button id="applyBase">Apply</button>
+        <button id="reset" class="secondary">Clear boxes</button>
+        <span id="error" class="error"></span>
+      </div>
+    </div>
+
+    <div style="margin-top:0.75rem;">
+      <strong>Subnet palette</strong>
+      <div class="info">
+        Palette shows subnet sizes from the base prefix down to the pixel prefix.
+        Pick one, then click on the grid to place it.
+      </div>
+      <div id="palette" class="palette"></div>
+    </div>
+
+    <div class="grid-wrapper">
+      <div id="gridLabel" class="grid-label"></div>
+      <div id="grid" class="grid"></div>
+      <div class="legend">
+        <span class="legend-item">
+          <span class="legend-dot" style="background:#22c55e;"></span> 🟢 first pixel of subnet (network ID)
+        </span>
+        <span class="legend-item">
+          <span class="legend-dot" style="background:#ef4444;"></span> 🔴 last pixel of subnet (broadcast)
+        </span>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>CIDR</th>
+            <th>Pixels</th>
+            <th>Usable hosts</th>
+            <th>Network ID</th>
+            <th>Broadcast</th>
+          </tr>
+        </thead>
+        <tbody id="allocTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // ---------- IP helpers ----------
+    function ipToInt(ip) {
+      const parts = ip.split(".");
+      if (parts.length !== 4) return null;
+      const nums = parts.map(p => {
+        const n = Number(p);
+        return Number.isInteger(n) && n >= 0 && n <= 255 ? n : NaN;
+      });
+      if (nums.some(Number.isNaN)) return null;
+      return ((nums[0] << 24) >>> 0) + (nums[1] << 16) + (nums[2] << 8) + nums[3];
+    }
+    function intToIp(num) {
+      return [
+        (num >>> 24) & 0xff,
+        (num >>> 16) & 0xff,
+        (num >>> 8) & 0xff,
+        num & 0xff
+      ].join(".");
+    }
+    function parseCidr(str) {
+      const [ipStr, pStr] = str.trim().split("/");
+      if (!ipStr || !pStr) return null;
+      const ipInt = ipToInt(ipStr);
+      const prefix = Number(pStr);
+      if (ipInt == null || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return null;
+      const blockSize = Math.pow(2, 32 - prefix);
+      const networkInt = ipInt - (ipInt % blockSize);
+      return { ipInt, prefix, blockSize, networkInt };
+    }
+    function usableHostsFromPrefix(prefix) {
+      const size = Math.pow(2, 32 - prefix);
+      return size >= 2 ? Math.max(size - 2, 0) : 0;
+    }
+
+    // ---------- Global state ----------
+    const state = {
+      base: null,
+      pixelPrefix: null,
+      pixelSizeAddr: null,
+      totalPixels: 0,
+      cols: 8,
+      usedByPixel: [],
+      allocations: [],
+      nextId: 1,
+      activeBox: null   // {prefix, pixelsNeeded, label}
+    };
+
+    // choose pixel prefix so total pixels <= 64, never more specific than /30
+    function choosePixelPrefix(basePrefix) {
+      const maxExtraBits = 6;        // at most 2^6 = 64 pixels
+      const candidate = basePrefix + maxExtraBits;
+      return Math.min(30, candidate);
+    }
+
+    function pixelsFromPrefixes(pixelPrefix, subnetPrefix) {
+      if (subnetPrefix < 0 || subnetPrefix > 32) return null;
+      if (subnetPrefix > pixelPrefix) return null; // subnet smaller than pixel
+      // pixelsNeeded = subnetSize / pixelSize = 2^(pixelPrefix - subnetPrefix)
+      const exp = pixelPrefix - subnetPrefix;
+      return Math.pow(2, exp);
+    }
+
+    // ---------- Palette ----------
+    function renderPalette() {
+      const palette = document.getElementById("palette");
+      palette.innerHTML = "";
+      state.activeBox = null;
+
+      if (!state.base) return;
+
+      // subnet prefixes range from base.prefix (largest) down to pixelPrefix (smallest)
+      const minP = state.base.prefix;
+      const maxP = state.pixelPrefix;
+
+      for (let p = minP; p <= maxP; p++) {
+        const pixels = pixelsFromPrefixes(state.pixelPrefix, p);
+        if (!pixels || pixels <= 0) continue;
+
+        const item = document.createElement("div");
+        item.className = "palette-item";
+        item.dataset.prefix = p;
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = "/" + p;
+
+        const pill = document.createElement("span");
+        pill.className = "pill";
+        pill.textContent = pixels + " px";
+
+        item.appendChild(labelSpan);
+        item.appendChild(pill);
+
+        item.addEventListener("click", () => {
+          state.activeBox = {
+            prefix: p,
+            pixelsNeeded: pixels,
+            label: "/" + p
+          };
+          document.querySelectorAll(".palette-item").forEach(el => el.classList.remove("active"));
+          item.classList.add("active");
+        });
+
+        palette.appendChild(item);
+      }
+    }
+
+    // ---------- Grid ----------
+    function initGrid() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+
+      const rows = Math.ceil(state.totalPixels / state.cols);
+      grid.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+      grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+      state.usedByPixel = new Array(state.totalPixels).fill(null);
+      state.allocations = [];
+      state.nextId = 1;
+
+      for (let i = 0; i < state.totalPixels; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.index = i;
+
+        const span = document.createElement("span");
+        span.textContent = i;
+        cell.appendChild(span);
+
+        cell.addEventListener("click", () => handleCellClick(i));
+        grid.appendChild(cell);
+      }
+
+      renderAllocTable();
+    }
+
+    function handleCellClick(pixelIndex) {
+      const errorEl = document.getElementById("error");
+      errorEl.textContent = "";
+
+      if (!state.activeBox) {
+        errorEl.textContent = "Select a subnet size from the palette first.";
+        return;
+      }
+      if (!state.base) {
+        errorEl.textContent = "Apply a base network first.";
+        return;
+      }
+
+      const { prefix, pixelsNeeded, label } = state.activeBox;
+
+      // snapping: start pixel index must be multiple of pixelsNeeded
+      const start = pixelIndex - (pixelIndex % pixelsNeeded);
+      const end = start + pixelsNeeded - 1;
+
+      if (end >= state.totalPixels) {
+        errorEl.textContent = "Subnet would exceed base block space.";
+        return;
+      }
+
+      if (start % pixelsNeeded !== 0) {
+        errorEl.textContent = "Subnet must align with its pixel boundary.";
+        return;
+      }
+
+      // overlap check
+      for (let i = start; i <= end; i++) {
+        if (state.usedByPixel[i] !== null) {
+          errorEl.textContent = "That region already contains another subnet.";
+          return;
+        }
+      }
+
+      // allocate
+      const id = state.nextId++;
+      const netInt = state.base.networkInt + start * state.pixelSizeAddr;
+      const blockSize = Math.pow(2, 32 - prefix);
+      const broadcastInt = netInt + blockSize - 1;
+
+      const alloc = {
+        id,
+        label,
+        prefix,
+        pixelsNeeded,
+        startPixel: start,
+        endPixel: end,
+        networkInt: netInt,
+        broadcastInt
+      };
+      state.allocations.push(alloc);
+      for (let i = start; i <= end; i++) {
+        state.usedByPixel[i] = id;
+      }
+
+      colorGrid();
+      renderAllocTable();
+    }
+
+    function colorGrid() {
+      const grid = document.getElementById("grid");
+      const cells = grid.querySelectorAll(".cell");
+      const byId = {};
+      state.allocations.forEach(a => { byId[a.id] = a; });
+
+      cells.forEach(cell => {
+        const i = Number(cell.dataset.index);
+        cell.classList.remove("filled");
+        cell.style.background = "#020617";
+        const dots = cell.querySelectorAll(".dot");
+        dots.forEach(d => d.remove());
+
+        const ownerId = state.usedByPixel[i];
+        if (ownerId == null) return;
+        const alloc = byId[ownerId];
+
+        // simple deterministic color
+        let hash = 0;
+        for (const ch of alloc.label + alloc.prefix) {
+          hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
+        }
+        const hue = (hash & 255);
+        cell.style.background = `hsl(${hue},60%,30%)`;
+        cell.classList.add("filled");
+
+        if (i === alloc.startPixel) {
+          const g = document.createElement("div");
+          g.className = "dot green";
+          cell.appendChild(g);
+        }
+        if (i === alloc.endPixel) {
+          const r = document.createElement("div");
+          r.className = "dot red";
+          cell.appendChild(r);
+        }
+      });
+    }
+
+    function renderAllocTable() {
+      const tbody = document.getElementById("allocTable");
+      tbody.innerHTML = "";
+      if (!state.base) return;
+
+      state.allocations.forEach(a => {
+        const tr = document.createElement("tr");
+        function td(text) {
+          const el = document.createElement("td");
+          el.textContent = text;
+          return el;
+        }
+        const cidrStr = `${intToIp(a.networkInt)}/${a.prefix}`;
+        const usable = usableHostsFromPrefix(a.prefix);
+        tr.appendChild(td(a.label));
+        tr.appendChild(td(cidrStr));
+        tr.appendChild(td(a.pixelsNeeded));
+        tr.appendChild(td(usable));
+        tr.appendChild(td(intToIp(a.networkInt)));
+        tr.appendChild(td(intToIp(a.broadcastInt)));
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ---------- Base setup ----------
+    function applyBase() {
+      const errorEl = document.getElementById("error");
+      errorEl.textContent = "";
+
+      const baseStr = document.getElementById("base").value;
+      const base = parseCidr(baseStr);
+      if (!base) {
+        errorEl.textContent = "Invalid base CIDR.";
+        return;
+      }
+      if (base.prefix > 30) {
+        errorEl.textContent = "Base prefix must be /30 or less specific (e.g., /16–/30).";
+        return;
+      }
+
+      const pixelPrefix = choosePixelPrefix(base.prefix);
+      const pixelSizeAddr = Math.pow(2, 32 - pixelPrefix);
+      const pixels = base.blockSize / pixelSizeAddr;
+      if (!Number.isInteger(pixels) || pixels <= 0) {
+        errorEl.textContent = "Unable to derive pixel grid from base.";
+        return;
+      }
+
+      state.base = base;
+      state.pixelPrefix = pixelPrefix;
+      state.pixelSizeAddr = pixelSizeAddr;
+      state.totalPixels = pixels;
+
+      document.getElementById("gridLabel").textContent =
+        `${intToIp(base.networkInt)}/${base.prefix} → pixels: /${pixelPrefix}, ` +
+        `${pixels} total (from ${intToIp(base.networkInt)} to ` +
+        `${intToIp(base.networkInt + base.blockSize - 1)})`;
+
+      initGrid();
+      renderPalette();
+      colorGrid();
+    }
+
+    function resetAllocations() {
+      const errorEl = document.getElementById("error");
+      errorEl.textContent = "";
+      if (!state.base) return;
+      state.usedByPixel = new Array(state.totalPixels).fill(null);
+      state.allocations = [];
+      state.nextId = 1;
+      colorGrid();
+      renderAllocTable();
+    }
+
+    // ---------- Init ----------
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("applyBase").addEventListener("click", applyBase);
+      document.getElementById("reset").addEventListener("click", resetAllocations);
+      applyBase(); // start with default
+    });
+  </script>
+</body>
+</html>
+
