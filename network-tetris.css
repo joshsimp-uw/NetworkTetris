@@ -212,3 +212,86 @@ tbody tr:hover{filter:brightness(1.08)}
   .blockBtn{flex:1 1 calc(33.333% - 8px);text-align:center;min-width:84px}
   .tableWrap{max-height:none}
 }
+
+/* ===============================
+   Networking Tetris Footer
+================================ */
+
+.nt-footer{
+  margin-top:32px;
+  border-top:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(
+    180deg,
+    rgba(255,255,255,.03),
+    rgba(255,255,255,.01)
+  );
+  backdrop-filter:blur(6px);
+}
+
+.nt-footer-inner{
+  max-width:1400px;
+  margin:auto;
+  padding:16px 20px;
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px;
+}
+
+.nt-footer-title{
+  font-weight:700;
+  font-size:14px;
+  letter-spacing:.4px;
+  color:#ffffff;
+}
+
+.nt-footer-sub{
+  font-size:12px;
+  color:rgba(255,255,255,.6);
+}
+
+.nt-footer-right{
+  font-size:12px;
+  color:rgba(255,255,255,.6);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.nt-footer-right a{
+  color:#4ee37f;
+  text-decoration:none;
+  font-weight:600;
+  transition:all .2s ease;
+}
+
+.nt-footer-right a:hover{
+  color:#25d0b2;
+  text-shadow:0 0 6px rgba(37,208,178,.5);
+}
+
+.nt-footer .divider{
+  opacity:.35;
+}
+
+/* mobile layout */
+
+@media (max-width:700px){
+  .nt-footer-inner{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+  }
+}
+
+.easterEgg{
+  opacity:.35;
+  font-style:italic;
+  transition:opacity .2s ease;
+}
+
+.easterEgg:hover{
+  opacity:.9;
+}
