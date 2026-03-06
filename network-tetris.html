@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Networking Tetris — VLSM Block Boundary Grid</title>
+  <link rel="stylesheet" href="network-tetris.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <h1>Networking Tetris — VLSM Block Boundary Grid</h1>
+      <p class="sub">
+        Enter a base network (IPv4 or IPv6 CIDR). The grid represents the whole base block, split into 64 “pixels”.
+        Drag a block from <b>Block selection</b> onto the grid, or tap a block and then tap the grid on mobile.
+        Placement snaps to valid VLSM boundaries and blocks cannot overlap.
+      </p>
+    </header>
+
+    <section class="controls">
+      <div class="field">
+        <label for="cidr">Base network (CIDR)</label>
+        <div class="row">
+          <input id="cidr" type="text" value="10.0.0.0/20" spellcheck="false" />
+          <button id="applyBtn" class="btn primary">Apply</button>
+          <button id="clearBtn" class="btn">Clear blocks</button>
+        </div>
+        <div class="hint">Examples: <code>10.0.0.0/20</code>, <code>192.168.1.0/24</code>, <code>2001:db8::/48</code>, <code>fd00:1234::/64</code></div>
+        <div id="status" class="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <main class="workspace">
+      <aside class="palette">
+        <div class="panelTitle">Block selection</div>
+        <div class="panelSub">Drag a CIDR block into the grid. On touch devices, tap a block first, then tap a grid cell.</div>
+        <div id="palette" class="paletteGrid"></div>
+
+        <div class="legend">
+          <div><span class="dot start"></span> first address of block (network ID)</div>
+          <div><span class="dot end"></span> last address of block (IPv4 broadcast / IPv6 last)</div>
+        </div>
+      </aside>
+
+      <section class="gridPanel">
+        <div class="gridTop">
+          <div class="gridMeta">
+            <div><b>Base:</b> <span id="baseLabel">—</span></div>
+            <div><b>Pixel size:</b> <span id="pixelLabel">—</span></div>
+          </div>
+          <div class="gridHelp">Drop anywhere on a cell. The tool snaps to the correct block boundary automatically.</div>
+        </div>
+
+        <div class="gridShell">
+          <div id="grid" class="grid" aria-label="VLSM grid"></div>
+        </div>
+      </section>
+
+      <aside class="tablePanel">
+        <div class="panelTitle">Assigned blocks</div>
+        <div class="panelSub">Placed blocks appear here. Remove any block to free that space in the grid.</div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="label">Label</th>
+                <th data-sort="cidr">CIDR</th>
+                <th data-sort="cellCount">Px</th>
+                <th data-sort="addresses">Addresses</th>
+                <th data-sort="usable">Usable</th>
+                <th data-sort="firstStr">Network ID</th>
+                <th data-sort="lastStr">Last</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="allocBody"></tbody>
+          </table>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="network-tetris.js"></script>
+</body>
+</html>
