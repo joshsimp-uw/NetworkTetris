@@ -145,6 +145,7 @@
     moveHandler: null,
     upHandler: null,
     cancelHandler: null,
+    dragGhost: null,
     sortKey: 'startCell',
     sortDir: 'asc',
   };
@@ -154,7 +155,12 @@
     return Math.max(basePrefix, Math.min(basePrefix + 6, cap));
   }
   function blockCellCount(pixelPrefix, blockPrefix){ return 1 << (pixelPrefix - blockPrefix); }
-  function colorForId(id){ return `hsl(${(id * 137) % 360} 70% 55% / 0.32)`; }
+  function colorForPrefix(prefix){
+    const base = state.cidr ? state.cidr.prefix : 0;
+    const offset = Math.max(0, prefix - base);
+    const hue = (offset * 43 + 165) % 360;
+    return `hsl(${hue} 62% 42% / 0.42)`;
+  }
   function snappedStart(cellIndex, cellCount){ return Math.floor(cellIndex / cellCount) * cellCount; }
   function canPlace(startCell, cellCount){
     if(startCell < 0 || startCell + cellCount > state.totalCells) return false;
@@ -260,23 +266,13 @@
       const endCell = grid.children[a.startCell + a.cellCount - 1];
 
       if(startCell){
-        startCell.classList.add('startMark');
         const startDot = document.createElement('div');
-        startDot.className = 'mark';
-        startDot.style.background = 'var(--ok)';
-        startDot.style.position = 'absolute';
-        startDot.style.top = '6px';
-        startDot.style.left = '6px';
+        startDot.className = 'mark startDot';
         startCell.appendChild(startDot);
       }
       if(endCell){
-        endCell.classList.add('endMark');
         const endDot = document.createElement('div');
-        endDot.className = 'mark';
-        endDot.style.background = 'var(--danger)';
-        endDot.style.position = 'absolute';
-        endDot.style.right = '6px';
-        endDot.style.bottom = '6px';
+        endDot.className = 'mark endDot';
         endCell.appendChild(endDot);
       }
     }
@@ -299,6 +295,7 @@
       btn.dataset.prefix = String(p);
       btn.dataset.cells = String(cellCount);
       btn.title = `+${p - basePrefix} bit(s), ${cellCount} pixel(s)`;
+      btn.style.background = colorForPrefix(p);
       if(remain === 0) btn.classList.add('disabled');
       if(state.selectedPrefix === p) btn.classList.add('selected');
       btn.addEventListener('click', () => {
@@ -315,6 +312,14 @@
       }, { passive: false });
       pal.appendChild(btn);
     }
+  }
+
+
+  function withAlpha(color, alpha){
+    const m = color.match(/^hsl\((.+?)\s*\/\s*([0-9.]+)\)$/i);
+    if(m) return `hsl(${m[1]} / ${alpha})`;
+    if(color.startsWith('rgb(')) return color.replace(/^rgb\((.+)\)$/i, `rgba($1, ${alpha})`);
+    return color;
   }
 
   function sortAllocations(items){
@@ -368,6 +373,9 @@
     const sorted = sortAllocations(state.allocations);
     for(const a of sorted){
       const tr = document.createElement('tr');
+      const rowBg = withAlpha(a.color, 0.18);
+      const rowBorder = withAlpha(a.color, 0.92);
+      tr.style.borderLeft = `4px solid ${rowBorder}`;
       tr.innerHTML = `
         <td>${a.label}</td>
         <td>${a.cidr}</td>
@@ -377,6 +385,9 @@
         <td>${a.firstStr}</td>
         <td>${a.lastStr}</td>
         <td><button type="button" class="smallBtn">Remove</button></td>`;
+      tr.querySelectorAll('td').forEach(td => {
+        td.style.backgroundColor = rowBg;
+      });
       tr.querySelector('.smallBtn').addEventListener('click', () => removeAllocation(a.id));
       body.appendChild(tr);
     }
@@ -406,7 +417,7 @@
       last,
       firstStr: fmtIP(state.cidr.version, net),
       lastStr: fmtIP(state.cidr.version, last),
-      color: colorForId(id),
+      color: colorForPrefix(prefix),
     };
     for(let i=0;i<cellCount;i++) state.used[start + i] = id;
     state.allocations.push(alloc);
@@ -440,6 +451,7 @@
 
   function updatePreviewAtPoint(clientX, clientY){
     if(!state.dragging) return;
+    positionDragGhost(clientX, clientY);
     const idx = cellFromPoint(clientX, clientY);
     if(idx === null){
       state.preview = null;
@@ -450,6 +462,33 @@
     const ok = canPlace(start, state.dragging.cellCount);
     state.preview = { startCell: start, cellCount: state.dragging.cellCount, ok, idx };
     applyPreview(start, state.dragging.cellCount, ok);
+  }
+
+  function ensureDragGhost(prefix){
+    let ghost = state.dragGhost;
+    if(!ghost){
+      ghost = document.createElement('div');
+      ghost.className = 'dragGhost';
+      document.body.appendChild(ghost);
+      state.dragGhost = ghost;
+    }
+    ghost.style.background = colorForPrefix(prefix);
+    ghost.hidden = false;
+    return ghost;
+  }
+
+  function positionDragGhost(clientX, clientY){
+    const ghost = state.dragGhost;
+    if(!ghost) return;
+    ghost.style.left = `${clientX}px`;
+    ghost.style.top = `${clientY}px`;
+  }
+
+  function removeDragGhost(){
+    if(state.dragGhost){
+      state.dragGhost.remove();
+      state.dragGhost = null;
+    }
   }
 
   function stopDrag(commit, clientX, clientY){
@@ -467,12 +506,14 @@
     }
     state.preview = null;
     clearPreviewClasses();
+    removeDragGhost();
     renderGrid();
   }
 
   function startDrag(ev, prefix, cellCount){
     state.selectedPrefix = prefix;
     state.dragging = { prefix, cellCount, pointerId: ev.pointerId };
+    ensureDragGhost(prefix);
     renderPalette();
     renderGrid();
     state.moveHandler = (moveEv) => updatePreviewAtPoint(moveEv.clientX, moveEv.clientY);
@@ -481,6 +522,7 @@
     document.addEventListener('pointermove', state.moveHandler, { passive: true });
     document.addEventListener('pointerup', state.upHandler, { passive: true, once: true });
     document.addEventListener('pointercancel', state.cancelHandler, { passive: true, once: true });
+    positionDragGhost(ev.clientX, ev.clientY);
     updatePreviewAtPoint(ev.clientX, ev.clientY);
     setStatus(`Dragging /${prefix}. Highlighted zones show valid aligned placements.`, 'ok');
   }

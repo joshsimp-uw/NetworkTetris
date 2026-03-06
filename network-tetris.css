@@ -106,9 +106,10 @@ input:focus{border-color:rgba(37,208,178,.55);box-shadow:0 0 0 3px rgba(37,208,1
   user-select:none;
   touch-action:none;
   font-size:13px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
 }
 .blockBtn:active{cursor:grabbing}
-.blockBtn.selected{border-color:rgba(37,208,178,.8);background:rgba(37,208,178,.18)}
+.blockBtn.selected{border-color:rgba(37,208,178,.8);box-shadow:0 0 0 2px rgba(37,208,178,.18) inset}
 .blockBtn.disabled{opacity:.45;cursor:not-allowed}
 .blockBtn:hover{border-color:rgba(255,255,255,.26)}
 .legend{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;color:var(--muted);font-size:13px;display:grid;gap:6px}
@@ -156,9 +157,23 @@ input:focus{border-color:rgba(37,208,178,.55);box-shadow:0 0 0 3px rgba(37,208,1
 }
 .cell.previewOk{outline:2px solid rgba(78,227,127,.85); outline-offset:-1px}
 .cell.previewBad{outline:2px solid rgba(255,90,122,.85); outline-offset:-1px}
-.cell .mark{position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:transparent;box-shadow:none}
-.cell.startMark .mark{background:var(--ok);top:6px;left:6px;right:auto;bottom:auto}
-.cell.endMark .mark{background:var(--danger);top:auto;left:auto;right:6px;bottom:6px}
+.cell .mark{position:absolute;width:8px;height:8px;border-radius:50%;box-shadow:none}
+.cell .mark.startDot{top:6px;left:6px;background:var(--ok)}
+.cell .mark.endDot{right:6px;bottom:6px;background:var(--danger)}
+
+.dragGhost{
+  position:fixed;
+  left:0;
+  top:0;
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 10px 28px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12);
+  pointer-events:none;
+  transform:translate(-50%, -50%);
+  z-index:9999;
+}
 
 .tableWrap{overflow:auto;border-radius:12px;border:1px solid var(--border);max-height:min(72vh,800px)}
 table{width:100%;border-collapse:collapse;min-width:820px;background:rgba(0,0,0,.18)}
@@ -170,6 +185,8 @@ th.sortedAsc::after{content:" ▲";font-size:11px}
 th.sortedDesc::after{content:" ▼";font-size:11px}
 
 tr:last-child td{border-bottom:none}
+tbody tr{transition:filter .12s ease}
+tbody tr:hover{filter:brightness(1.08)}
 .smallBtn{border:1px solid rgba(255,90,122,.45);background:rgba(255,90,122,.14);color:var(--text);padding:6px 10px;border-radius:999px;cursor:pointer}
 .smallBtn:hover{border-color:rgba(255,90,122,.70)}
 
